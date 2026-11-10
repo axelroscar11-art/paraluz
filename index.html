@@ -29,14 +29,13 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        window.saveDataCloud = async function(eduardoTime, eduardoMsg, herTime, herMsg, mediaUrl = '') {
+        window.saveDataCloud = async function(eduardoTime, eduardoMsg, herTime, herMsg) {
             try {
                 await setDoc(doc(db, "pareja", "estado"), {
                     eduardo_time: eduardoTime,
                     eduardo_msg: eduardoMsg,
                     her_time: herTime,
-                    her_msg: herMsg,
-                    media_url: mediaUrl
+                    her_msg: herMsg
                 });
             } catch (e) {
                 console.error("Error al guardar en Firebase: ", e);
@@ -50,8 +49,7 @@
                     data.eduardo_time || 'Hace un momento ❤️',
                     data.eduardo_msg || '',
                     data.her_time || 'Aún no presionado',
-                    data.her_msg || '',
-                    data.media_url || ''
+                    data.her_msg || ''
                 );
             }
         });
@@ -172,6 +170,15 @@
             word-break: break-word;
         }
 
+        .love-message-card span {
+            display: block;
+            font-style: normal;
+            font-weight: bold;
+            font-size: 0.78rem;
+            color: var(--primary-dark);
+            margin-bottom: 2px;
+        }
+
         .input-container {
             margin-bottom: 16px;
             text-align: left;
@@ -185,18 +192,21 @@
             margin-bottom: 6px;
         }
 
-        textarea, input[type="file"] {
+        textarea {
             width: 100%;
             padding: 12px;
             border-radius: 12px;
             border: 1.5px solid var(--accent);
             background-color: #fffafc;
-            font-size: 0.95rem;
+            resize: none;
+            font-size: 16px;
             outline: none;
-            margin-bottom: 8px;
+            transition: border-color 0.2s ease;
         }
 
-        textarea { resize: none; }
+        textarea:focus {
+            border-color: var(--primary);
+        }
 
         .btn-miss-you {
             background: linear-gradient(135deg, var(--primary), var(--primary-dark));
@@ -240,6 +250,7 @@
             border: 1px solid #ffccd5;
             margin-bottom: 10px;
             width: 100%;
+            font-size: 0.95rem;
             background: white;
         }
 
@@ -251,6 +262,12 @@
             margin-bottom: 12px;
         }
 
+        .admin-inbox h4 {
+            font-size: 0.88rem;
+            color: var(--primary-dark);
+            margin-bottom: 6px;
+        }
+
         .btn-admin {
             background: var(--primary-dark);
             color: white;
@@ -260,6 +277,7 @@
             cursor: pointer;
             font-weight: bold;
             width: 100%;
+            font-size: 0.95rem;
         }
 
         .custom-modal {
@@ -269,6 +287,7 @@
             background: rgba(0, 0, 0, 0.4);
             justify-content: center; align-items: center;
             z-index: 100; padding: 20px;
+            backdrop-filter: blur(2px);
         }
 
         .modal-content {
@@ -276,6 +295,9 @@
             border-radius: 20px; max-width: 340px; width: 100%;
             text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.2);
         }
+
+        .modal-content h3 { color: var(--primary-dark); margin-bottom: 10px; font-size: 1.3rem; }
+        .modal-content p { color: var(--text-color); margin-bottom: 20px; font-size: 0.95rem; }
         .modal-btn { background: var(--primary); color: white; border: none; padding: 10px 26px; border-radius: 50px; font-weight: bold; cursor: pointer; }
     </style>
 </head>
@@ -283,7 +305,7 @@
 
     <canvas id="heart-canvas"></canvas>
 
-    <!-- Reproductor de música de fondo (reemplazá el src con tu enlace MP3) -->
+    <!-- Reproductor de audio local -->
     <audio id="bg-music" loop>
         <source src="Camilo, Evaluna Montaner - La Medalla.mp3" type="audio/mp3">
     </audio>
@@ -314,7 +336,6 @@
                 <div id="msg-card-her" class="love-message-card">
                     <span>Ella dice:</span>
                     <p id="msg-text-her"></p>
-                    <div id="media-container-her" style="margin-top: 8px;"></div>
                 </div>
             </div>
         </div>
@@ -322,9 +343,6 @@
         <div class="input-container">
             <label for="her-message">Escribile un mensajito a Eduardito:</label>
             <textarea id="her-message" rows="2" placeholder="Escribí acá tu respuesta o algo lindo... ❤️"></textarea>
-            
-            <label for="her-file" style="font-size: 0.8rem; margin-top: 4px;">Adjuntar fotito o recuerdo (opcional):</label>
-            <input type="file" id="her-file" accept="image/*">
         </div>
 
         <button class="btn-miss-you" id="miss-btn">¡Yo también te extraño mucho! ❤️</button>
@@ -359,7 +377,7 @@
     <script>
         let soundEnabled = true;
         let audioCtx = null;
-        let currentData = { eduardo_time: '', eduardo_msg: '', her_time: '', her_msg: '', media_url: '' };
+        let currentData = { eduardo_time: '', eduardo_msg: '', her_time: '', her_msg: '' };
 
         // Control de música de fondo
         const bgMusic = document.getElementById('bg-music');
@@ -411,8 +429,8 @@
             document.getElementById('custom-modal').style.display = 'none';
         });
 
-        window.updateUIFromCloud = function(eduTime, eduMsg, hTime, hMsg, mediaUrl) {
-            currentData = { eduardo_time: eduTime, eduardo_msg: eduMsg, her_time: hTime, her_msg: hMsg, media_url: mediaUrl };
+        window.updateUIFromCloud = function(eduTime, eduMsg, hTime, hMsg) {
+            currentData = { eduardo_time: eduTime, eduardo_msg: eduMsg, her_time: hTime, her_msg: hMsg };
 
             document.getElementById('time-eduardo').innerText = eduTime;
             document.getElementById('time-her').innerText = hTime;
@@ -431,13 +449,6 @@
                 document.getElementById('msg-card-her').style.display = 'none';
             }
 
-            const mediaContainer = document.getElementById('media-container-her');
-            if (mediaUrl) {
-                mediaContainer.innerHTML = `<img src="${mediaUrl}" alt="Recuerdo" style="max-width:100%; border-radius:12px; margin-top:6px;">`;
-            } else {
-                mediaContainer.innerHTML = '';
-            }
-
             document.getElementById('admin-inbox-time').innerText = `Respondido a las: ${hTime}`;
             document.getElementById('admin-inbox-msg').innerText = hMsg ? `"${hMsg}"` : "(No dejó ningún mensajito escrito todavía)";
         };
@@ -445,38 +456,18 @@
         document.getElementById('miss-btn').addEventListener('click', function() {
             const now = new Date().toLocaleString('es-AR', { dateStyle: 'medium', timeStyle: 'short' });
             const messageText = document.getElementById('her-message').value.trim();
-            const fileInput = document.getElementById('her-file');
 
-            let imageBase64 = currentData.media_url;
-
-            if (fileInput.files && fileInput.files[0]) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    imageBase64 = e.target.result;
-                    window.saveDataCloud(
-                        currentData.eduardo_time,
-                        currentData.eduardo_msg,
-                        now,
-                        messageText || currentData.her_msg,
-                        imageBase64
-                    );
-                };
-                reader.readAsDataURL(fileInput.files[0]);
-            } else {
-                window.saveDataCloud(
-                    currentData.eduardo_time,
-                    currentData.eduardo_msg,
-                    now,
-                    messageText || currentData.her_msg,
-                    imageBase64
-                );
-            }
+            window.saveDataCloud(
+                currentData.eduardo_time,
+                currentData.eduardo_msg,
+                now,
+                messageText || currentData.her_msg
+            );
 
             triggerHeartsConfetti();
             playRomanticChime();
-            showModal("¡Guardado mi amor! ❤️", "Tu respuesta y fotito quedaron guardaditas para Eduardito.");
+            showModal("¡Guardado mi amor! ❤️", "Tu respuesta y mensajito quedaron guardaditos para Eduardito.");
             document.getElementById('her-message').value = '';
-            fileInput.value = '';
         });
 
         function toggleAdmin() {
@@ -498,8 +489,7 @@
                     now,
                     messageText || currentData.eduardo_msg,
                     currentData.her_time,
-                    currentData.her_msg,
-                    currentData.media_url
+                    currentData.her_msg
                 );
 
                 triggerHeartsConfetti();
