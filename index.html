@@ -11,6 +11,53 @@
     <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&family=Quicksand:wght@400;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     
+    <!-- Firebase SDK (Modular v9) -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getFirestore, doc, setDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        // CONFIGURACIÓN DE FIREBASE (¡Reemplazá esto con tus datos de Firebase!)
+        const firebaseConfig = {
+            apiKey: "AIzaSyA-G_s7aIVmsHRCn5nHtxBOFHmRCKdkidA",
+            authDomain: "paralucesita.firebaseapp.com",
+            projectId: "paralucesita",
+            storageBucket: "paralucesita.firebasestorage.app",
+            messagingSenderId: "495892553825",
+            appId: "1:495892553825:web:a14cc15ca72b3a015b4a20",
+            measurementId: "G-CH111ZE8XQ"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // Funciones globales accesibles por el script de la página
+        window.saveDataCloud = async function(eduardoTime, eduardoMsg, herTime, herMsg) {
+            try {
+                await setDoc(doc(db, "pareja", "estado"), {
+                    eduardo_time: eduardoTime,
+                    eduardo_msg: eduardoMsg,
+                    her_time: herTime,
+                    her_msg: herMsg
+                });
+            } catch (e) {
+                console.error("Error al guardar en Firebase: ", e);
+            }
+        };
+
+        // Escuchar cambios en tiempo real desde la nube
+        onSnapshot(doc(db, "pareja", "estado"), (docSnap) => {
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                window.updateUIFromCloud(
+                    data.eduardo_time || 'Hace un momento ❤️',
+                    data.eduardo_msg || '',
+                    data.her_time || 'Aún no presionado',
+                    data.her_msg || ''
+                );
+            }
+        });
+    </script>
+    
     <style>
         :root {
             --bg-color: #fff0f3;
@@ -63,10 +110,9 @@
             z-index: 1;
         }
 
-        .sound-trigger {
+        .sound-trigger, .secret-trigger {
             position: absolute;
             top: 18px;
-            left: 18px;
             background: none;
             border: none;
             font-size: 1.25rem;
@@ -75,24 +121,8 @@
             padding: 6px;
             transition: opacity 0.2s ease;
         }
-
-        .secret-trigger {
-            position: absolute;
-            top: 18px;
-            right: 18px;
-            background: none;
-            border: none;
-            font-size: 1.25rem;
-            cursor: pointer;
-            opacity: 0.7;
-            padding: 6px;
-            transition: opacity 0.2s ease;
-        }
-
-        .sound-trigger:active, .secret-trigger:active {
-            opacity: 1;
-            transform: scale(0.95);
-        }
+        .sound-trigger { left: 18px; }
+        .secret-trigger { right: 18px; }
 
         h1 {
             font-family: 'Dancing Script', cursive;
@@ -175,7 +205,7 @@
             border: 1.5px solid var(--accent);
             background-color: #fffafc;
             resize: none;
-            font-size: 16px; /* Prevents auto-zoom on mobile safari */
+            font-size: 16px;
             outline: none;
             transition: border-color 0.2s ease;
         }
@@ -196,12 +226,6 @@
             box-shadow: 0 6px 20px rgba(201, 24, 74, 0.3);
             width: 100%;
             margin-bottom: 12px;
-            transition: transform 0.1s ease, box-shadow 0.2s ease;
-        }
-
-        .btn-miss-you:active {
-            transform: scale(0.97);
-            box-shadow: 0 3px 10px rgba(201, 24, 74, 0.2);
         }
 
         .btn-open-admin {
@@ -224,12 +248,6 @@
             margin-top: 15px;
             border: 1.5px solid var(--primary);
             text-align: left;
-            animation: fadeIn 0.3s ease;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(-5px); }
-            to { opacity: 1; transform: translateY(0); }
         }
 
         .admin-panel input, .admin-panel textarea {
@@ -268,72 +286,29 @@
             font-size: 0.95rem;
         }
 
-        .btn-admin:active {
-            transform: scale(0.98);
-        }
-
         .custom-modal {
             display: none;
             position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
+            top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0, 0, 0, 0.4);
-            justify-content: center;
-            align-items: center;
-            z-index: 100;
-            padding: 20px;
+            justify-content: center; align-items: center;
+            z-index: 100; padding: 20px;
             backdrop-filter: blur(2px);
         }
 
         .modal-content {
-            background: white;
-            padding: 25px 20px;
-            border-radius: 20px;
-            max-width: 340px;
-            width: 100%;
-            text-align: center;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-            animation: popIn 0.25s ease;
+            background: white; padding: 25px 20px;
+            border-radius: 20px; max-width: 340px; width: 100%;
+            text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.2);
         }
 
-        @keyframes popIn {
-            from { opacity: 0; transform: scale(0.9); }
-            to { opacity: 1; transform: scale(1); }
-        }
-
-        .modal-content h3 {
-            color: var(--primary-dark);
-            margin-bottom: 10px;
-            font-size: 1.3rem;
-        }
-
-        .modal-content p {
-            color: var(--text-color);
-            margin-bottom: 20px;
-            font-size: 0.95rem;
-            line-height: 1.4;
-        }
-
-        .modal-btn {
-            background: var(--primary);
-            color: white;
-            border: none;
-            padding: 10px 26px;
-            border-radius: 50px;
-            font-weight: bold;
-            cursor: pointer;
-        }
-
-        .modal-btn:active {
-            transform: scale(0.95);
-        }
+        .modal-content h3 { color: var(--primary-dark); margin-bottom: 10px; font-size: 1.3rem; }
+        .modal-content p { color: var(--text-color); margin-bottom: 20px; font-size: 0.95rem; }
+        .modal-btn { background: var(--primary); color: white; border: none; padding: 10px 26px; border-radius: 50px; font-weight: bold; cursor: pointer; }
     </style>
 </head>
 <body>
 
-    <!-- Canvas for floating background hearts -->
     <canvas id="heart-canvas"></canvas>
 
     <div class="container">
@@ -344,7 +319,6 @@
         <p class="subtitle">Un rinconcito especial solo para los dos ❤️</p>
 
         <div class="status-box">
-            <!-- Eduardo's Block -->
             <div class="status-item">
                 Última vez que te dije que te extraño (Eduardito):
                 <strong id="time-eduardo">Cargando...</strong>
@@ -356,7 +330,6 @@
 
             <hr style="border: 0; border-top: 1px dashed var(--accent); margin: 14px 0;">
 
-            <!-- Her Block -->
             <div class="status-item">
                 Última vez que me respondiste (Ella):
                 <strong id="time-her">Aún no presionado</strong>
@@ -367,7 +340,6 @@
             </div>
         </div>
 
-        <!-- Message field for Her -->
         <div class="input-container">
             <label for="her-message">Escribile un mensajito a Eduardito:</label>
             <textarea id="her-message" rows="2" placeholder="Escribí acá tu respuesta o algo lindo... ❤️"></textarea>
@@ -377,12 +349,10 @@
         <br>
         <button class="btn-open-admin" id="admin-link-btn">🔒 Panel Privado (Eduardo)</button>
 
-        <!-- Private Admin Panel for Eduardo -->
         <div id="admin-panel" class="admin-panel">
             <p style="font-size: 0.95rem; font-weight: bold; margin-bottom: 10px; color: var(--primary-dark);">🔒 Panel Privado de Eduardo</p>
             <input type="password" id="admin-pass" placeholder="Contraseña:">
             
-            <!-- Inbox displaying her response -->
             <div class="admin-inbox">
                 <h4>💌 Lo último que te escribió ella:</h4>
                 <p id="admin-inbox-time" style="font-size: 0.78rem; color: #800f2f; margin-bottom: 4px;">Hora: Aún sin registros</p>
@@ -396,20 +366,18 @@
         </div>
     </div>
 
-    <!-- Custom Modal -->
     <div id="custom-modal" class="custom-modal">
         <div class="modal-content">
             <h3 id="modal-title">¡Guardado!</h3>
-            <p id="modal-body">Tu cositas lindas a Eduardito fueron guardaditos</p>
+            <p id="modal-body">Tu mensajito fue enviado.</p>
             <button class="modal-btn" id="close-modal-btn">Aceptar ❤️</button>
         </div>
     </div>
 
-    <!-- Main Logic Script -->
     <script>
         let soundEnabled = true;
-        const AudioContext = window.AudioContext || window.webkitAudioContext;
         let audioCtx = null;
+        let currentData = { eduardo_time: '', eduardo_msg: '', her_time: '', her_msg: '' };
 
         document.getElementById('sound-btn').addEventListener('click', function() {
             soundEnabled = !soundEnabled;
@@ -419,10 +387,8 @@
         function playRomanticChime() {
             if (!soundEnabled) return;
             try {
-                if (!audioCtx) audioCtx = new AudioContext();
-                if (audioCtx.state === 'suspended') {
-                    audioCtx.resume();
-                }
+                if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                if (audioCtx.state === 'suspended') audioCtx.resume();
                 const notes = [523.25, 659.25, 783.99, 1046.50];
                 notes.forEach((freq, idx) => {
                     const osc = audioCtx.createOscillator();
@@ -436,9 +402,7 @@
                     osc.start(audioCtx.currentTime + (idx * 0.12));
                     osc.stop(audioCtx.currentTime + (idx * 0.12) + 0.8);
                 });
-            } catch (e) {
-                console.error("Audio playback error", e);
-            }
+            } catch (e) {}
         }
 
         function showModal(title, text) {
@@ -451,43 +415,43 @@
             document.getElementById('custom-modal').style.display = 'none';
         });
 
-        function loadData() {
-            const eduardoTime = localStorage.getItem('last_eduardo_time') || 'Hace un momento ❤️';
-            const herTime = localStorage.getItem('last_her_time') || 'Aún no presionado';
-            const eduardoMsg = localStorage.getItem('last_eduardo_msg') || '';
-            const herMsg = localStorage.getItem('last_her_msg') || '';
+        // Esta función se ejecuta automáticamente cuando Firebase detecta cambios en la nube
+        window.updateUIFromCloud = function(eduTime, eduMsg, hTime, hMsg) {
+            currentData = { eduardo_time: eduTime, eduardo_msg: eduMsg, her_time: hTime, her_msg: hMsg };
 
-            document.getElementById('time-eduardo').innerText = eduardoTime;
-            document.getElementById('time-her').innerText = herTime;
+            document.getElementById('time-eduardo').innerText = eduTime;
+            document.getElementById('time-her').innerText = hTime;
 
-            if (eduardoMsg) {
-                document.getElementById('msg-text-eduardo').innerText = `"${eduardoMsg}"`;
+            if (eduMsg) {
+                document.getElementById('msg-text-eduardo').innerText = `"${eduMsg}"`;
                 document.getElementById('msg-card-eduardo').style.display = 'block';
             } else {
                 document.getElementById('msg-card-eduardo').style.display = 'none';
             }
 
-            if (herMsg) {
-                document.getElementById('msg-text-her').innerText = `"${herMsg}"`;
+            if (hMsg) {
+                document.getElementById('msg-text-her').innerText = `"${hMsg}"`;
                 document.getElementById('msg-card-her').style.display = 'block';
             } else {
                 document.getElementById('msg-card-her').style.display = 'none';
             }
 
-            document.getElementById('admin-inbox-time').innerText = `Respondido a las: ${herTime}`;
-            document.getElementById('admin-inbox-msg').innerText = herMsg ? `"${herMsg}"` : "(No dejó ningún mensajito escrito todavía)";
-        }
+            document.getElementById('admin-inbox-time').innerText = `Respondido a las: ${hTime}`;
+            document.getElementById('admin-inbox-msg').innerText = hMsg ? `"${hMsg}"` : "(No dejó ningún mensajito escrito todavía)";
+        };
 
+        // Botón cuando ELLA responde
         document.getElementById('miss-btn').addEventListener('click', function() {
             const now = new Date().toLocaleString('es-AR', { dateStyle: 'medium', timeStyle: 'short' });
             const messageText = document.getElementById('her-message').value.trim();
 
-            localStorage.setItem('last_her_time', now);
-            if (messageText) {
-                localStorage.setItem('last_her_msg', messageText);
-            }
+            window.saveDataCloud(
+                currentData.eduardo_time,
+                currentData.eduardo_msg,
+                now,
+                messageText || currentData.her_msg
+            );
 
-            loadData();
             triggerHeartsConfetti();
             playRomanticChime();
             showModal("¡Guardado mi amor! ❤️", "Tu respuesta y mensajito quedaron guardaditos para Eduardito.");
@@ -502,18 +466,21 @@
         document.getElementById('secret-btn').addEventListener('click', toggleAdmin);
         document.getElementById('admin-link-btn').addEventListener('click', toggleAdmin);
 
+        // Botón cuando EDUARDO actualiza desde su panel
         document.getElementById('update-eduardo-btn').addEventListener('click', function() {
             const pass = document.getElementById('admin-pass').value;
             const messageText = document.getElementById('admin-message').value.trim();
 
             if (pass === '1234') {
                 const now = new Date().toLocaleString('es-AR', { dateStyle: 'medium', timeStyle: 'short' });
-                localStorage.setItem('last_eduardo_time', now);
-                if (messageText) {
-                    localStorage.setItem('last_eduardo_msg', messageText);
-                }
 
-                loadData();
+                window.saveDataCloud(
+                    now,
+                    messageText || currentData.eduardo_msg,
+                    currentData.her_time,
+                    currentData.her_msg
+                );
+
                 triggerHeartsConfetti();
                 playRomanticChime();
                 showModal("¡Actualizado Eduardo! ❤️", "Tu 'Te extraño' y tu mensaje se guardaron correctamente.");
@@ -522,7 +489,7 @@
                 document.getElementById('admin-message').value = '';
                 toggleAdmin();
             } else {
-                showModal("Contraseña Incorrecta 🔒");
+                showModal("Contraseña Incorrecta 🔒", "La contraseña es incorrecta.");
             }
         });
 
@@ -536,8 +503,6 @@
                 });
             }
         }
-
-        loadData();
     </script>
 
     <!-- Canvas Animation Script -->
@@ -556,10 +521,7 @@
         const heartColors = ['rgba(255, 77, 109, 0.3)', 'rgba(255, 179, 193, 0.4)', 'rgba(201, 24, 74, 0.2)'];
 
         class Heart {
-            constructor() {
-                this.reset();
-            }
-
+            constructor() { this.reset(); }
             reset() {
                 this.x = Math.random() * canvas.width;
                 this.y = canvas.height + 20;
@@ -568,7 +530,6 @@
                 this.speedX = Math.sin(Math.random() * Math.PI) * 0.5;
                 this.color = heartColors[Math.floor(Math.random() * heartColors.length)];
             }
-
             draw() {
                 ctx.save();
                 ctx.fillStyle = this.color;
@@ -583,19 +544,14 @@
                 ctx.fill();
                 ctx.restore();
             }
-
             update() {
                 this.y -= this.speedY;
                 this.x += this.speedX;
-                if (this.y < -20) {
-                    this.reset();
-                }
+                if (this.y < -20) this.reset();
             }
         }
 
-        for (let i = 0; i < 20; i++) {
-            hearts.push(new Heart());
-        }
+        for (let i = 0; i < 20; i++) hearts.push(new Heart());
 
         function animate() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -606,9 +562,7 @@
             requestAnimationFrame(animate);
         }
 
-        window.onload = function() {
-            animate();
-        };
+        window.onload = function() { animate(); };
     </script>
 </body>
 </html>
