@@ -14,9 +14,8 @@
     <!-- Firebase SDK (Modular v9) -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, doc, setDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        // CONFIGURACIÓN DE FIREBASE (¡Reemplazá esto con tus datos de Firebase!)
         const firebaseConfig = {
             apiKey: "AIzaSyA-G_s7aIVmsHRCn5nHtxBOFHmRCKdkidA",
             authDomain: "paralucesita.firebaseapp.com",
@@ -30,21 +29,20 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        // Funciones globales accesibles por el script de la página
-        window.saveDataCloud = async function(eduardoTime, eduardoMsg, herTime, herMsg) {
+        window.saveDataCloud = async function(eduardoTime, eduardoMsg, herTime, herMsg, mediaUrl = '') {
             try {
                 await setDoc(doc(db, "pareja", "estado"), {
                     eduardo_time: eduardoTime,
                     eduardo_msg: eduardoMsg,
                     her_time: herTime,
-                    her_msg: herMsg
+                    her_msg: herMsg,
+                    media_url: mediaUrl
                 });
             } catch (e) {
                 console.error("Error al guardar en Firebase: ", e);
             }
         };
 
-        // Escuchar cambios en tiempo real desde la nube
         onSnapshot(doc(db, "pareja", "estado"), (docSnap) => {
             if (docSnap.exists()) {
                 const data = docSnap.data();
@@ -52,7 +50,8 @@
                     data.eduardo_time || 'Hace un momento ❤️',
                     data.eduardo_msg || '',
                     data.her_time || 'Aún no presionado',
-                    data.her_msg || ''
+                    data.her_msg || '',
+                    data.media_url || ''
                 );
             }
         });
@@ -90,12 +89,8 @@
 
         #heart-canvas {
             position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: 0;
+            top: 0; left: 0; width: 100%; height: 100%;
+            pointer-events: none; z-index: 0;
         }
 
         .container {
@@ -110,7 +105,7 @@
             z-index: 1;
         }
 
-        .sound-trigger, .secret-trigger {
+        .sound-trigger, .secret-trigger, .music-trigger {
             position: absolute;
             top: 18px;
             background: none;
@@ -122,6 +117,7 @@
             transition: opacity 0.2s ease;
         }
         .sound-trigger { left: 18px; }
+        .music-trigger { left: 54px; }
         .secret-trigger { right: 18px; }
 
         h1 {
@@ -176,15 +172,6 @@
             word-break: break-word;
         }
 
-        .love-message-card span {
-            display: block;
-            font-style: normal;
-            font-weight: bold;
-            font-size: 0.78rem;
-            color: var(--primary-dark);
-            margin-bottom: 2px;
-        }
-
         .input-container {
             margin-bottom: 16px;
             text-align: left;
@@ -198,21 +185,18 @@
             margin-bottom: 6px;
         }
 
-        textarea {
+        textarea, input[type="file"] {
             width: 100%;
             padding: 12px;
             border-radius: 12px;
             border: 1.5px solid var(--accent);
             background-color: #fffafc;
-            resize: none;
-            font-size: 16px;
+            font-size: 0.95rem;
             outline: none;
-            transition: border-color 0.2s ease;
+            margin-bottom: 8px;
         }
 
-        textarea:focus {
-            border-color: var(--primary);
-        }
+        textarea { resize: none; }
 
         .btn-miss-you {
             background: linear-gradient(135deg, var(--primary), var(--primary-dark));
@@ -256,7 +240,6 @@
             border: 1px solid #ffccd5;
             margin-bottom: 10px;
             width: 100%;
-            font-size: 0.95rem;
             background: white;
         }
 
@@ -268,12 +251,6 @@
             margin-bottom: 12px;
         }
 
-        .admin-inbox h4 {
-            font-size: 0.88rem;
-            color: var(--primary-dark);
-            margin-bottom: 6px;
-        }
-
         .btn-admin {
             background: var(--primary-dark);
             color: white;
@@ -283,7 +260,6 @@
             cursor: pointer;
             font-weight: bold;
             width: 100%;
-            font-size: 0.95rem;
         }
 
         .custom-modal {
@@ -293,7 +269,6 @@
             background: rgba(0, 0, 0, 0.4);
             justify-content: center; align-items: center;
             z-index: 100; padding: 20px;
-            backdrop-filter: blur(2px);
         }
 
         .modal-content {
@@ -301,9 +276,6 @@
             border-radius: 20px; max-width: 340px; width: 100%;
             text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.2);
         }
-
-        .modal-content h3 { color: var(--primary-dark); margin-bottom: 10px; font-size: 1.3rem; }
-        .modal-content p { color: var(--text-color); margin-bottom: 20px; font-size: 0.95rem; }
         .modal-btn { background: var(--primary); color: white; border: none; padding: 10px 26px; border-radius: 50px; font-weight: bold; cursor: pointer; }
     </style>
 </head>
@@ -311,8 +283,14 @@
 
     <canvas id="heart-canvas"></canvas>
 
+    <!-- Reproductor de música de fondo (reemplazá el src con tu enlace MP3) -->
+    <audio id="bg-music" loop>
+        <source src="Camilo, Evaluna Montaner - La Medalla.mp3" type="audio/mp3">
+    </audio>
+
     <div class="container">
-        <button class="sound-trigger" id="sound-btn" title="Silenciar / Activar audio">🔊</button>
+        <button class="sound-trigger" id="sound-btn" title="Efectos de Sonido">🔊</button>
+        <button class="music-trigger" id="music-btn" title="Música de Fondo">🎵</button>
         <button class="secret-trigger" id="secret-btn" title="Panel de Eduardo">🔒</button>
 
         <h1>Pensando en vos</h1>
@@ -336,6 +314,7 @@
                 <div id="msg-card-her" class="love-message-card">
                     <span>Ella dice:</span>
                     <p id="msg-text-her"></p>
+                    <div id="media-container-her" style="margin-top: 8px;"></div>
                 </div>
             </div>
         </div>
@@ -343,6 +322,9 @@
         <div class="input-container">
             <label for="her-message">Escribile un mensajito a Eduardito:</label>
             <textarea id="her-message" rows="2" placeholder="Escribí acá tu respuesta o algo lindo... ❤️"></textarea>
+            
+            <label for="her-file" style="font-size: 0.8rem; margin-top: 4px;">Adjuntar fotito o recuerdo (opcional):</label>
+            <input type="file" id="her-file" accept="image/*">
         </div>
 
         <button class="btn-miss-you" id="miss-btn">¡Yo también te extraño mucho! ❤️</button>
@@ -377,7 +359,21 @@
     <script>
         let soundEnabled = true;
         let audioCtx = null;
-        let currentData = { eduardo_time: '', eduardo_msg: '', her_time: '', her_msg: '' };
+        let currentData = { eduardo_time: '', eduardo_msg: '', her_time: '', her_msg: '', media_url: '' };
+
+        // Control de música de fondo
+        const bgMusic = document.getElementById('bg-music');
+        let musicPlaying = false;
+        document.getElementById('music-btn').addEventListener('click', function() {
+            musicPlaying = !musicPlaying;
+            if (musicPlaying) {
+                bgMusic.play().catch(e => console.log("Audio block", e));
+                this.innerText = "🎶";
+            } else {
+                bgMusic.pause();
+                this.innerText = "🎵";
+            }
+        });
 
         document.getElementById('sound-btn').addEventListener('click', function() {
             soundEnabled = !soundEnabled;
@@ -415,9 +411,8 @@
             document.getElementById('custom-modal').style.display = 'none';
         });
 
-        // Esta función se ejecuta automáticamente cuando Firebase detecta cambios en la nube
-        window.updateUIFromCloud = function(eduTime, eduMsg, hTime, hMsg) {
-            currentData = { eduardo_time: eduTime, eduardo_msg: eduMsg, her_time: hTime, her_msg: hMsg };
+        window.updateUIFromCloud = function(eduTime, eduMsg, hTime, hMsg, mediaUrl) {
+            currentData = { eduardo_time: eduTime, eduardo_msg: eduMsg, her_time: hTime, her_msg: hMsg, media_url: mediaUrl };
 
             document.getElementById('time-eduardo').innerText = eduTime;
             document.getElementById('time-her').innerText = hTime;
@@ -436,26 +431,52 @@
                 document.getElementById('msg-card-her').style.display = 'none';
             }
 
+            const mediaContainer = document.getElementById('media-container-her');
+            if (mediaUrl) {
+                mediaContainer.innerHTML = `<img src="${mediaUrl}" alt="Recuerdo" style="max-width:100%; border-radius:12px; margin-top:6px;">`;
+            } else {
+                mediaContainer.innerHTML = '';
+            }
+
             document.getElementById('admin-inbox-time').innerText = `Respondido a las: ${hTime}`;
             document.getElementById('admin-inbox-msg').innerText = hMsg ? `"${hMsg}"` : "(No dejó ningún mensajito escrito todavía)";
         };
 
-        // Botón cuando ELLA responde
         document.getElementById('miss-btn').addEventListener('click', function() {
             const now = new Date().toLocaleString('es-AR', { dateStyle: 'medium', timeStyle: 'short' });
             const messageText = document.getElementById('her-message').value.trim();
+            const fileInput = document.getElementById('her-file');
 
-            window.saveDataCloud(
-                currentData.eduardo_time,
-                currentData.eduardo_msg,
-                now,
-                messageText || currentData.her_msg
-            );
+            let imageBase64 = currentData.media_url;
+
+            if (fileInput.files && fileInput.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    imageBase64 = e.target.result;
+                    window.saveDataCloud(
+                        currentData.eduardo_time,
+                        currentData.eduardo_msg,
+                        now,
+                        messageText || currentData.her_msg,
+                        imageBase64
+                    );
+                };
+                reader.readAsDataURL(fileInput.files[0]);
+            } else {
+                window.saveDataCloud(
+                    currentData.eduardo_time,
+                    currentData.eduardo_msg,
+                    now,
+                    messageText || currentData.her_msg,
+                    imageBase64
+                );
+            }
 
             triggerHeartsConfetti();
             playRomanticChime();
-            showModal("¡Guardado mi amor! ❤️", "Tu respuesta y mensajito quedaron guardaditos para Eduardito.");
+            showModal("¡Guardado mi amor! ❤️", "Tu respuesta y fotito quedaron guardaditas para Eduardito.");
             document.getElementById('her-message').value = '';
+            fileInput.value = '';
         });
 
         function toggleAdmin() {
@@ -466,7 +487,6 @@
         document.getElementById('secret-btn').addEventListener('click', toggleAdmin);
         document.getElementById('admin-link-btn').addEventListener('click', toggleAdmin);
 
-        // Botón cuando EDUARDO actualiza desde su panel
         document.getElementById('update-eduardo-btn').addEventListener('click', function() {
             const pass = document.getElementById('admin-pass').value;
             const messageText = document.getElementById('admin-message').value.trim();
@@ -478,7 +498,8 @@
                     now,
                     messageText || currentData.eduardo_msg,
                     currentData.her_time,
-                    currentData.her_msg
+                    currentData.her_msg,
+                    currentData.media_url
                 );
 
                 triggerHeartsConfetti();
