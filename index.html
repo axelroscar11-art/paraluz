@@ -3,12 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
     <title>Pensando en vos ❤️</title>
     
     <!-- Google Fonts & Canvas Confetti -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&family=Quicksand:wght@400;600;700&display=swap" rel="stylesheet">
+    
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    
+<link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&family=Quicksand:wght@400;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     
     <!-- Firebase SDK (Modular v9) -->
@@ -307,6 +310,7 @@
 
     <!-- Reproductor de audio local -->
     <audio id="bg-music" loop>
+
         <source src="Camilo, Evaluna Montaner - La Medalla.mp3" type="audio/mp3">
     </audio>
 
@@ -518,6 +522,7 @@
 
     <!-- Canvas Animation Script -->
     <script>
+
         const canvas = document.getElementById('heart-canvas');
         const ctx = canvas.getContext('2d');
 
@@ -570,6 +575,7 @@
                 heart.update();
                 heart.draw();
             });
+
             requestAnimationFrame(animate);
             
         }
