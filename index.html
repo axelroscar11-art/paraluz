@@ -8,13 +8,55 @@
     
     <!-- Google Fonts & Canvas Confetti -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&family=Quicksand:wght@400;600;700&display=swap" rel="stylesheet">
+    
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    
+<link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&family=Quicksand:wght@400;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     
-    <!-- Firebase SDK (Versión Clásica 8.10.1 - Súper estable en celulares) -->
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <!-- Firebase SDK (Modular v9) -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyA-G_s7aIVmsHRCn5nHtxBOFHmRCKdkidA",
+            authDomain: "paralucesita.firebaseapp.com",
+            projectId: "paralucesita",
+            storageBucket: "paralucesita.firebasestorage.app",
+            messagingSenderId: "495892553825",
+            appId: "1:495892553825:web:a14cc15ca72b3a015b4a20",
+            measurementId: "G-CH111ZE8XQ"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        window.saveDataCloud = async function(eduardoTime, eduardoMsg, herTime, herMsg) {
+            try {
+                await setDoc(doc(db, "pareja", "estado"), {
+                    eduardo_time: eduardoTime,
+                    eduardo_msg: eduardoMsg,
+                    her_time: herTime,
+                    her_msg: herMsg
+                });
+            } catch (e) {
+                console.error("Error al guardar en Firebase: ", e);
+            }
+        };
+
+        onSnapshot(doc(db, "pareja", "estado"), (docSnap) => {
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                window.updateUIFromCloud(
+                    data.eduardo_time || 'Hace un momento ❤️',
+                    data.eduardo_msg || '',
+                    data.her_time || 'Aún no presionado',
+                    data.her_msg || ''
+                );
+            }
+        });
+    </script>
     
     <style>
         :root {
@@ -64,7 +106,7 @@
             z-index: 1;
         }
 
-        .sound-trigger, .secret-trigger {
+        .sound-trigger, .secret-trigger, .music-trigger {
             position: absolute;
             top: 18px;
             background: none;
@@ -76,6 +118,7 @@
             transition: opacity 0.2s ease;
         }
         .sound-trigger { left: 18px; }
+        .music-trigger { left: 54px; }
         .secret-trigger { right: 18px; }
 
         h1 {
@@ -265,8 +308,15 @@
 
     <canvas id="heart-canvas"></canvas>
 
+    <!-- Reproductor de audio local -->
+    <audio id="bg-music" loop>
+
+        <source src="Camilo, Evaluna Montaner - La Medalla.mp3" type="audio/mp3">
+    </audio>
+
     <div class="container">
         <button class="sound-trigger" id="sound-btn" title="Efectos de Sonido">🔊</button>
+        <button class="music-trigger" id="music-btn" title="Música de Fondo">🎵</button>
         <button class="secret-trigger" id="secret-btn" title="Panel de Eduardo">🔒</button>
 
         <h1>Pensando en vos</h1>
@@ -328,69 +378,24 @@
         </div>
     </div>
 
-    <!-- Lógica de Firebase y aplicación -->
     <script>
-        // Configuración de Firebase
-        const firebaseConfig = {
-            apiKey: "AIzaSyA-G_s7aIVmsHRCn5nHtxBOFHmRCKdkidA",
-            authDomain: "paralucesita.firebaseapp.com",
-            projectId: "paralucesita",
-            storageBucket: "paralucesita.firebasestorage.app",
-            messagingSenderId: "495892553825",
-            appId: "1:495892553825:web:a14cc15ca72b3a015b4a20",
-            measurementId: "G-CH111ZE8XQ"
-        };
-
-        // Inicializar Firebase clásico
-        let db;
-        try {
-            firebase.initializeApp(firebaseConfig);
-            db = firebase.firestore();
-        } catch (e) {
-            console.error("Error al inicializar Firebase:", e);
-        }
-
         let soundEnabled = true;
         let audioCtx = null;
         let currentData = { eduardo_time: '', eduardo_msg: '', her_time: '', her_msg: '' };
 
-        // Función para guardar datos en la nube
-        window.saveDataCloud = function(eduardoTime, eduardoMsg, herTime, herMsg) {
-            if (!db) return;
-            db.collection("pareja").doc("estado").set({
-                eduardo_time: eduardoTime,
-                eduardo_msg: eduardoMsg,
-                her_time: herTime,
-                her_msg: herMsg
-            }).catch((e) => {
-                console.error("Error al guardar en Firebase: ", e);
-            });
-        };
-
-        // Escuchar cambios en tiempo real
-        if (db) {
-            db.collection("pareja").doc("estado").onSnapshot((docSnap) => {
-                if (docSnap.exists) {
-                    const data = docSnap.data();
-                    updateUIFromCloud(
-                        data.eduardo_time || 'Hace un momento ❤️',
-                        data.eduardo_msg || '',
-                        data.her_time || 'Aún no presionado',
-                        data.her_msg || ''
-                    );
-                } else {
-                    updateUIFromCloud('Hace un momento ❤️', '', 'Aún no presionado', '');
-                }
-            }, (error) => {
-                console.error("Error en Firestore:", error);
-                updateUIFromCloud('Hace un momento ❤️', '', 'Aún no presionado', '');
-            });
-        } else {
-            // Fallback si no hay DB
-            setTimeout(() => {
-                updateUIFromCloud('Listo para usar ❤️', '', 'Aún no presionado', '');
-            }, 1000);
-        }
+        // Control de música de fondo
+        const bgMusic = document.getElementById('bg-music');
+        let musicPlaying = false;
+        document.getElementById('music-btn').addEventListener('click', function() {
+            musicPlaying = !musicPlaying;
+            if (musicPlaying) {
+                bgMusic.play().catch(e => console.log("Audio block", e));
+                this.innerText = "🎶";
+            } else {
+                bgMusic.pause();
+                this.innerText = "🎵";
+            }
+        });
 
         document.getElementById('sound-btn').addEventListener('click', function() {
             soundEnabled = !soundEnabled;
@@ -428,7 +433,7 @@
             document.getElementById('custom-modal').style.display = 'none';
         });
 
-        function updateUIFromCloud(eduTime, eduMsg, hTime, hMsg) {
+        window.updateUIFromCloud = function(eduTime, eduMsg, hTime, hMsg) {
             currentData = { eduardo_time: eduTime, eduardo_msg: eduMsg, her_time: hTime, her_msg: hMsg };
 
             document.getElementById('time-eduardo').innerText = eduTime;
@@ -450,13 +455,13 @@
 
             document.getElementById('admin-inbox-time').innerText = `Respondido a las: ${hTime}`;
             document.getElementById('admin-inbox-msg').innerText = hMsg ? `"${hMsg}"` : "(No dejó ningún mensajito escrito todavía)";
-        }
+        };
 
         document.getElementById('miss-btn').addEventListener('click', function() {
             const now = new Date().toLocaleString('es-AR', { dateStyle: 'medium', timeStyle: 'short' });
             const messageText = document.getElementById('her-message').value.trim();
 
-            saveDataCloud(
+            window.saveDataCloud(
                 currentData.eduardo_time,
                 currentData.eduardo_msg,
                 now,
@@ -484,7 +489,7 @@
             if (pass === '1234') {
                 const now = new Date().toLocaleString('es-AR', { dateStyle: 'medium', timeStyle: 'short' });
 
-                saveDataCloud(
+                window.saveDataCloud(
                     now,
                     messageText || currentData.eduardo_msg,
                     currentData.her_time,
@@ -505,20 +510,19 @@
 
         function triggerHeartsConfetti() {
             if (typeof confetti === 'function') {
-                try {
-                    confetti({
-                        particleCount: 50,
-                        spread: 70,
-                        origin: { y: 0.7 },
-                        colors: ['#ff4d6d', '#ff758f', '#c9184a', '#ffb3c1']
-                    });
-                } catch(e) {}
+                confetti({
+                    particleCount: 50,
+                    spread: 70,
+                    origin: { y: 0.7 },
+                    colors: ['#ff4d6d', '#ff758f', '#c9184a', '#ffb3c1']
+                });
             }
         }
     </script>
 
     <!-- Canvas Animation Script -->
     <script>
+
         const canvas = document.getElementById('heart-canvas');
         const ctx = canvas.getContext('2d');
 
@@ -571,10 +575,16 @@
                 heart.update();
                 heart.draw();
             });
+
             requestAnimationFrame(animate);
+            
         }
 
         window.onload = function() { animate(); };
+        
     </script>
+    
 </body>
+
 </html>
+ 
