@@ -1,8 +1,10 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
     <title>Pensando en vos ❤️</title>
     
     <!-- Google Fonts & Canvas Confetti -->
@@ -305,11 +307,6 @@
 
     <canvas id="heart-canvas"></canvas>
 
-    <!-- Reproductor de audio local corregido -->
-    <audio id="bg-music" loop>
-        <source src="Camilo, Evaluna Montaner - La Medalla.mp3" type="audio/mp3">
-    </audio>
-
     <div class="container">
         <button class="sound-trigger" id="sound-btn" title="Efectos de Sonido">🔊</button>
         <button class="music-trigger" id="music-btn" title="Música de Fondo">🎵</button>
@@ -562,7 +559,8 @@
             }
         }
 
-        for (let i = 0; i < 20; i++) hearts.push(new Heart());
+        for (let i = 0; i < 20; i++)
+ hearts.push(new Heart());
 
         function animate() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -570,10 +568,14 @@
                 heart.update();
                 heart.draw();
             });
+
             requestAnimationFrame(animate);
         }
 
         window.onload = function() { animate(); };
+
     </script>
+
 </body>
+
 </html>
