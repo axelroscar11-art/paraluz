@@ -8,10 +8,8 @@
     
     <!-- Google Fonts & Canvas Confetti -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    
-<link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&family=Quicksand:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&family=Quicksand:wght@400;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     
     <!-- Firebase SDK (Modular v9) -->
@@ -29,33 +27,50 @@
             measurementId: "G-CH111ZE8XQ"
         };
 
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
+        try {
+            const app = initializeApp(firebaseConfig);
+            const db = getFirestore(app);
 
-        window.saveDataCloud = async function(eduardoTime, eduardoMsg, herTime, herMsg) {
-            try {
-                await setDoc(doc(db, "pareja", "estado"), {
-                    eduardo_time: eduardoTime,
-                    eduardo_msg: eduardoMsg,
-                    her_time: herTime,
-                    her_msg: herMsg
-                });
-            } catch (e) {
-                console.error("Error al guardar en Firebase: ", e);
-            }
-        };
+            window.saveDataCloud = async function(eduardoTime, eduardoMsg, herTime, herMsg) {
+                try {
+                    await setDoc(doc(db, "pareja", "estado"), {
+                        eduardo_time: eduardoTime,
+                        eduardo_msg: eduardoMsg,
+                        her_time: herTime,
+                        her_msg: herMsg
+                    });
+                } catch (e) {
+                    console.error("Error al guardar en Firebase: ", e);
+                }
+            };
 
-        onSnapshot(doc(db, "pareja", "estado"), (docSnap) => {
-            if (docSnap.exists()) {
-                const data = docSnap.data();
-                window.updateUIFromCloud(
-                    data.eduardo_time || 'Hace un momento ❤️',
-                    data.eduardo_msg || '',
-                    data.her_time || 'Aún no presionado',
-                    data.her_msg || ''
-                );
-            }
-        });
+            onSnapshot(doc(db, "pareja", "estado"), (docSnap) => {
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    if (window.updateUIFromCloud) {
+                        window.updateUIFromCloud(
+                            data.eduardo_time || 'Hace un momento ❤️',
+                            data.eduardo_msg || '',
+                            data.her_time || 'Aún no presionado',
+                            data.her_msg || ''
+                        );
+                    }
+                }
+            }, (error) => {
+                console.error("Error en Firestore snapshot:", error);
+                // Fallback visual si falla Firestore para que no quede en "Cargando..."
+                if (window.updateUIFromCloud) {
+                    window.updateUIFromCloud('Hace un momento ❤️', '', 'Aún no presionado', '');
+                }
+            });
+        } catch (err) {
+            console.error("Error inicializando Firebase:", err);
+            window.addEventListener('DOMContentLoaded', () => {
+                if (window.updateUIFromCloud) {
+                    window.updateUIFromCloud('Hace un momento ❤️', '', 'Aún no presionado', '');
+                }
+            });
+        }
     </script>
     
     <style>
@@ -106,7 +121,7 @@
             z-index: 1;
         }
 
-        .sound-trigger, .secret-trigger, .music-trigger {
+        .sound-trigger, .secret-trigger {
             position: absolute;
             top: 18px;
             background: none;
@@ -118,7 +133,6 @@
             transition: opacity 0.2s ease;
         }
         .sound-trigger { left: 18px; }
-        .music-trigger { left: 54px; }
         .secret-trigger { right: 18px; }
 
         h1 {
@@ -308,12 +322,8 @@
 
     <canvas id="heart-canvas"></canvas>
 
-    <!-- Reproductor de audio local -->
-    
-
     <div class="container">
         <button class="sound-trigger" id="sound-btn" title="Efectos de Sonido">🔊</button>
-        <button class="music-trigger" id="music-btn" title="Música de Fondo">🎵</button>
         <button class="secret-trigger" id="secret-btn" title="Panel de Eduardo">🔒</button>
 
         <h1>Pensando en vos</h1>
@@ -380,23 +390,12 @@
         let audioCtx = null;
         let currentData = { eduardo_time: '', eduardo_msg: '', her_time: '', her_msg: '' };
 
-        // Control de música de fondo
-<audio id="bg-music" loop>
-
-        <source src="Camilo, Evaluna Montaner - La Medalla.mp3" type="audio/mp3">
-    </audio>
-        const bgMusic = document.getElementById('bg-music');
-        let musicPlaying = false;
-        document.getElementById('music-btn').addEventListener('click', function() {
-            musicPlaying = !musicPlaying;
-            if (musicPlaying) {
-                bgMusic.play().catch(e => console.log("Audio block", e));
-                this.innerText = "🎶";
-            } else {
-                bgMusic.pause();
-                this.innerText = "🎵";
+        // Timeout de seguridad: si Firebase tarda más de 3 segundos en responder, muestra la interfaz por defecto
+        let loadTimeout = setTimeout(() => {
+            if (document.getElementById('time-eduardo').innerText === "Cargando...") {
+                document.getElementById('time-eduardo').innerText = "Listo para usar ❤️";
             }
-        });
+        }, 3000);
 
         document.getElementById('sound-btn').addEventListener('click', function() {
             soundEnabled = !soundEnabled;
@@ -435,6 +434,7 @@
         });
 
         window.updateUIFromCloud = function(eduTime, eduMsg, hTime, hMsg) {
+            clearTimeout(loadTimeout);
             currentData = { eduardo_time: eduTime, eduardo_msg: eduMsg, her_time: hTime, her_msg: hMsg };
 
             document.getElementById('time-eduardo').innerText = eduTime;
@@ -462,12 +462,14 @@
             const now = new Date().toLocaleString('es-AR', { dateStyle: 'medium', timeStyle: 'short' });
             const messageText = document.getElementById('her-message').value.trim();
 
-            window.saveDataCloud(
-                currentData.eduardo_time,
-                currentData.eduardo_msg,
-                now,
-                messageText || currentData.her_msg
-            );
+            if (window.saveDataCloud) {
+                window.saveDataCloud(
+                    currentData.eduardo_time,
+                    currentData.eduardo_msg,
+                    now,
+                    messageText || currentData.her_msg
+                );
+            }
 
             triggerHeartsConfetti();
             playRomanticChime();
@@ -490,12 +492,14 @@
             if (pass === '1234') {
                 const now = new Date().toLocaleString('es-AR', { dateStyle: 'medium', timeStyle: 'short' });
 
-                window.saveDataCloud(
-                    now,
-                    messageText || currentData.eduardo_msg,
-                    currentData.her_time,
-                    currentData.her_msg
-                );
+                if (window.saveDataCloud) {
+                    window.saveDataCloud(
+                        now,
+                        messageText || currentData.eduardo_msg,
+                        currentData.her_time,
+                        currentData.her_msg
+                    );
+                }
 
                 triggerHeartsConfetti();
                 playRomanticChime();
@@ -511,19 +515,20 @@
 
         function triggerHeartsConfetti() {
             if (typeof confetti === 'function') {
-                confetti({
-                    particleCount: 50,
-                    spread: 70,
-                    origin: { y: 0.7 },
-                    colors: ['#ff4d6d', '#ff758f', '#c9184a', '#ffb3c1']
-                });
+                try {
+                    confetti({
+                        particleCount: 50,
+                        spread: 70,
+                        origin: { y: 0.7 },
+                        colors: ['#ff4d6d', '#ff758f', '#c9184a', '#ffb3c1']
+                    });
+                } catch(e) {}
             }
         }
     </script>
 
     <!-- Canvas Animation Script -->
     <script>
-
         const canvas = document.getElementById('heart-canvas');
         const ctx = canvas.getContext('2d');
 
@@ -576,15 +581,10 @@
                 heart.update();
                 heart.draw();
             });
-
             requestAnimationFrame(animate);
-            
         }
 
         window.onload = function() { animate(); };
-        
     </script>
-    
 </body>
-
 </html>
